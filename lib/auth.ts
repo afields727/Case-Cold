@@ -2,9 +2,18 @@ import { NextAuthOptions, User } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import GoogleProvider from "next-auth/providers/google"
 import GitHubProvider from "next-auth/providers/github"
-import { PrismaAdapter } from "@auth/prisma-adapter"
-import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
+
+// Mock user database (replace with real DB later)
+const users = [
+  {
+    id: "1",
+    name: "Test User",
+    email: "test@example.com",
+    password: bcrypt.hashSync("password123", 10),
+    role: "user",
+  },
+]
 
 declare module "next-auth" {
   interface Session {
@@ -19,7 +28,6 @@ declare module "next-auth" {
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
@@ -40,11 +48,9 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Email and password required")
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email }
-        })
+        const user = users.find((u) => u.email === credentials.email)
 
-        if (!user || !user.password) {
+        if (!user) {
           throw new Error("Invalid credentials")
         }
 
@@ -70,7 +76,7 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt"
   },
   pages: {
-    signIn: "/auth"
+    signIn: "/login"
   },
   callbacks: {
     async jwt({ token, user }) {

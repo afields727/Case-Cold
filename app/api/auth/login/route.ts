@@ -1,61 +1,65 @@
-import { NextRequest, NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
-import { prisma } from '@/lib/prisma'
+import { NextRequest, NextResponse } from "next/server"
+import bcrypt from "bcryptjs"
+
+// Mock user database (replace with real DB later)
+const users = [
+  {
+    id: "1",
+    name: "Test User",
+    email: "test@example.com",
+    password: bcrypt.hashSync("password123", 10),
+    role: "user",
+  },
+]
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { email, password } = body
 
+    // Validate input
     if (!email || !password) {
       return NextResponse.json(
-        { error: 'Email and password are required' },
+        { error: "Email and password are required" },
         { status: 400 }
       )
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email }
-    })
-
-    if (!user || !user.password) {
+    // Find user
+    const user = users.find((u) => u.email === email)
+    if (!user) {
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { error: "Invalid credentials" },
         { status: 401 }
       )
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password)
-
-    if (!isPasswordValid) {
+    // Check password
+    const isValid = await bcrypt.compare(password, user.password)
+    if (!isValid) {
       return NextResponse.json(
-        { error: 'Invalid credentials' },
+        { error: "Invalid credentials" },
         { status: 401 }
       )
     }
 
-    const response = NextResponse.json({
-      success: true,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
-    })
-
-    response.cookies.set('userId', user.id, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7 // 1 week
-    })
-
-    return response
-  } catch (error) {
-    console.error('Login error:', error)
+    // Success response
     return NextResponse.json(
-      { error: 'An error occurred during login' },
+      {
+        success: true,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
+      },
+      { status: 200 }
+    )
+  } catch (error) {
+    console.error("Login error:", error)
+    return NextResponse.json(
+      { error: "An error occurred during login" },
       { status: 500 }
     )
   }
